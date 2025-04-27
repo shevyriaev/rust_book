@@ -1,3 +1,5 @@
+use std::env::Args;
+use std::error::Error;
 use std::{env, fs, process};
 
 struct Parameters {
@@ -13,23 +15,38 @@ impl Parameters {
 
         Ok(Parameters {
             query: args[1].clone(),
-            file_path: args[2].clone()
+            file_path: args[2].clone(),
         })
     }
 }
 
+fn run(args: Args) -> Result<(), Box<dyn Error>> {
+    let params =
+        Parameters::build(&args.collect::<Vec<String>>())
+            .unwrap_or_else(|err| {
+                println!("Problem parsing arguments: '{err}'");
+                process::exit(1);
+            });
+
+    let content = fs::read_to_string(&params.file_path)?;
+
+    println!(
+        "Search for '{}' in file '{}'",
+        &params.query,
+        &params.file_path,
+    );
+
+    println!("With text:");
+    for line in content.lines() {
+        println!("  {line}");
+    }
+
+    Ok(())
+}
+
 fn main() {
-    let args:Vec<String> = env::args().collect();
-    let params = Parameters::build(&args)
-        .unwrap_or_else(|err|{
-            println!("Problem parsing arguments: '{err}'");
-            process::exit(1);
-        });
-
-    println!("Search for '{}' in file '{}' with text:", params.query, params.file_path);
-
-    let content = fs::read_to_string(params.file_path)
-        .expect("Should have been able to read the file");
-
-    println!("{content}");
+    if let Err(e) = run(env::args()) {
+        println!("Application error: {e}");
+        process::exit(1);
+    }
 }
