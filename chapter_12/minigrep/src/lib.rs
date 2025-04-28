@@ -24,24 +24,23 @@ impl Parameters {
     }
 }
 
-fn search_case_sensitive<'a>(query: &str, content: &'a str) -> Vec<&'a str> {
+fn search<'a>(query: &str, content: &'a str, ignore_case: bool) -> Vec<&'a str> {
     let mut result = Vec::new();
 
-    for line in content.lines() {
-        if line.contains(query) {
-            result.push(line)
-        }
-    }
-
-    result
-}
-
-fn search_case_insensitive<'a>(query: &str, content: &'a str) -> Vec<&'a str> {
-    let query = query.to_lowercase();
-    let mut result = Vec::new();
+    let query = if ignore_case {
+        &query.to_lowercase()
+    } else {
+        query
+    };
 
     for line in content.lines() {
-        if line.to_lowercase().contains(&query) {
+        let search_line = if ignore_case {
+            &line.to_lowercase()
+        } else {
+            line
+        };
+
+        if search_line.contains(&query) {
             result.push(line)
         }
     }
@@ -59,21 +58,10 @@ pub fn run(args: Args) -> Result<(), Box<dyn Error>> {
 
     let content = fs::read_to_string(&params.file_path)?;
 
-    // println!(
-    //     "Search for '{}' in file '{}'",
-    //     &params.query,
-    //     &params.file_path,
-    // );
-    //
-    // println!("With text:");
-    // for line in content.lines() {
-    //     println!("  {line}");
-    // }
-
     let results = if params.ignore_case {
-        search_case_insensitive(&params.query, &content)
+        search(&params.query, &content, true)
     } else {
-        search_case_sensitive(&params.query, &content)
+        search(&params.query, &content, false)
     };
 
     for line in results {
@@ -93,13 +81,14 @@ mod tests {
         let content = "\
 Rust:
 safe, fast, productive.
-Pick three.";
+Pick three.
+Duct tape";
 
         assert_eq!(
             vec![
                 "safe, fast, productive."
             ],
-            search_case_sensitive(query, content)
+            search(query, content, false)
         );
     }
 
@@ -117,7 +106,7 @@ Trust me.";
                 "Rust:",
                 "Trust me."
             ],
-            search_case_insensitive(query, content)
+            search(query, content, true)
         );
     }
 }
