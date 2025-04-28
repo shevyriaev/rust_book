@@ -1,10 +1,11 @@
 use std::env::Args;
 use std::error::Error;
-use std::{fs, process};
+use std::{env, fs, process};
 
 struct Parameters {
     query: String,
     file_path: String,
+    ignore_case: bool,
 }
 
 impl Parameters {
@@ -13,9 +14,12 @@ impl Parameters {
             return Err("not enough arguments");
         }
 
+        let ignore_case = env::var("IGNORE_CASE").is_ok();
+
         Ok(Parameters {
             query: args[1].clone(),
             file_path: args[2].clone(),
+            ignore_case,
         })
     }
 }
@@ -66,7 +70,13 @@ pub fn run(args: Args) -> Result<(), Box<dyn Error>> {
     //     println!("  {line}");
     // }
 
-    for line in search_case_sensitive(&params.query, &content) {
+    let results = if params.ignore_case {
+        search_case_insensitive(&params.query, &content)
+    } else {
+        search_case_sensitive(&params.query, &content)
+    };
+
+    for line in results {
         println!("{line}");
     }
 
