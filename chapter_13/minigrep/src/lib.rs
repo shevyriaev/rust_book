@@ -1,4 +1,3 @@
-use std::env::Args;
 use std::error::Error;
 use std::{env, fs, process};
 
@@ -9,48 +8,46 @@ struct Parameters {
 }
 
 impl Parameters {
-    fn build(args: &[String]) -> Result<Self, &'static str> {
-        if args.len() < 3 {
-            return Err("not enough arguments");
-        }
+    fn build(mut args: impl Iterator<Item = String>) -> Result<Self, &'static str> {
+        args.next();
 
-        let ignore_case = env::var("IGNORE_CASE").is_ok();
+        let query = match args.next() {
+            Some(arg) => arg,
+            None => return Err("Didn't get 'query' parameter"),
+        };
+
+        let file_path = match args.next() {
+            Some(arg) => arg,
+            None => return Err("Didn't get 'file_path' parameter"),
+        };
 
         Ok(Parameters {
-            query: args[1].clone(),
-            file_path: args[2].clone(),
-            ignore_case,
+            query,
+            file_path,
+            ignore_case: env::var("IGNORE_CASE").is_ok(),
         })
     }
 }
 
 fn search<'a>(query: &str, content: &'a str, ignore_case: bool) -> Vec<&'a str> {
-    let mut result = Vec::new();
-
-    let query = if ignore_case {
-        &query.to_lowercase()
-    } else {
-        query
-    };
-
-    for line in content.lines() {
-        let search_line = if ignore_case {
-            &line.to_lowercase()
-        } else {
-            line
-        };
-
-        if search_line.contains(&query) {
-            result.push(line)
-        }
-    }
-
-    result
+    content
+        .lines()
+        .filter(|line|
+            if ignore_case {
+                line
+                    .to_lowercase()
+                    .contains(&query.to_lowercase())
+            } else {
+                line
+                    .contains(&query)
+            }
+        )
+        .collect()
 }
 
-pub fn run(args: Args) -> Result<(), Box<dyn Error>> {
+pub fn run(args: impl Iterator<Item = String>) -> Result<(), Box<dyn Error>> {
     let params =
-        Parameters::build(&args.collect::<Vec<String>>())
+        Parameters::build(args)
             .unwrap_or_else(|err| {
                 eprintln!("Problem parsing arguments: '{err}'");
                 process::exit(1);
