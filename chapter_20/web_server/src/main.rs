@@ -1,9 +1,8 @@
-use std::fs;
+use std::{fs, process, thread};
 use std::io::{BufRead, BufReader, Write};
 use std::net::{TcpListener, TcpStream};
-
-const RESPONSE_OK: &str = "HTTP/1.1 200 OK";
-const RESPONSE_NOT_FOUND: &str = "HTTP/1.1 404 NOT FOUND";
+use std::time::Duration;
+use web_server::{REQUEST, STATUS, WEBFILES};
 
 fn handle_connection(i: &usize, mut stream: TcpStream) {
     let buf_reader = BufReader::new(&mut stream);
@@ -15,25 +14,35 @@ fn handle_connection(i: &usize, mut stream: TcpStream) {
 
     println!("[{}] => [{}]", i + 1, request_header);
 
-    let (response_status, filename) =
-        if request_header == "GET / HTTP/1.1" {
-            (RESPONSE_OK, "index.html")
-        } else {
-            (RESPONSE_NOT_FOUND, "404.html")
-        };
-        println!("[{}] <= [{}]", i + 1, response_status);
+    let (response_status, filename) = match &request_header[..] {
+        REQUEST::INDEX => (STATUS::OK, WEBFILES::INDEX),
+        REQUEST::SLEEP => {
+            thread::sleep(Duration::from_secs(5));
+            (STATUS::OK, WEBFILES::INDEX)
+        },
+        REQUEST::EXIT => (STATUS::OK, WEBFILES::SHUTDOWN),
+        _ => (STATUS::NOT_FOUND, WEBFILES::NOT_FOUND)
+    };
 
-        let content = fs::read_to_string(filename).unwrap();
-        let response = format!(
-            "\
-                {response_status}\r\n\
-                Content-Length: {}\r\n\r\n\
-                {content}\
-            ",
-            content.len()
-        );
+    println!("[{}] <= [{}]", i + 1, response_status);
 
-        stream.write_all(response.as_bytes()).unwrap();
+    let content = fs::read_to_string(filename).unwrap();
+    let response = format!(
+        "\
+            {response_status}\r\n\
+            Content-Length: {}\r\n\r\n\
+            {content}\
+        ",
+        content.len()
+    );
+
+    println!("{response}");
+
+    stream.write_all(response.as_bytes()).unwrap();
+
+    if request_header == REQUEST::EXIT {
+        process::exit(0)
+    }
 }
 
 fn main() {
