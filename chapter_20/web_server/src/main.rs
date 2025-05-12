@@ -1,7 +1,8 @@
+use std::fs;
 use std::io::{BufRead, BufReader, Write};
 use std::net::{TcpListener, TcpStream};
 
-const RESPONSE_OK:&[u8] = "HTTP/1.1 200 OK".as_bytes();
+const RESPONSE_OK: &str = "HTTP/1.1 200 OK";
 
 fn handle_connection(i: &usize, mut stream: TcpStream) {
     let buf_reader = BufReader::new(&mut stream);
@@ -12,7 +13,18 @@ fn handle_connection(i: &usize, mut stream: TcpStream) {
         .collect();
 
     println!("[{}] => [{}]", i + 1, http_request[0]);
-    stream.write_all(RESPONSE_OK).unwrap();
+
+    let content = fs::read_to_string("index.html").unwrap();
+    let response = format!("\
+        {RESPONSE_OK}\r\n\
+        Content-Length: {}\r\n\r\n\
+        {content}",
+        content.len()
+    );
+
+    println!("{response}");
+
+    stream.write_all(response.as_bytes()).unwrap();
 }
 
 fn main() {
