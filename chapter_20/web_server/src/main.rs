@@ -36,8 +36,6 @@ fn handle_connection(i: &usize, mut stream: TcpStream) {
         content.len()
     );
 
-    println!("{response}");
-
     stream.write_all(response.as_bytes()).unwrap();
 
     if request_header == REQUEST::EXIT {
@@ -49,6 +47,6 @@ fn main() {
     let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
 
     for (i, stream) in listener.incoming().enumerate() {
-        handle_connection(&i, stream.unwrap());
+        thread::spawn(move || handle_connection(&i, stream.unwrap()));
     }
 }
