@@ -1,5 +1,7 @@
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Write};
 use std::net::{TcpListener, TcpStream};
+
+const RESPONSE_OK:&[u8] = "HTTP/1.1 200 OK".as_bytes();
 
 fn handle_connection(i: &usize, mut stream: TcpStream) {
     let buf_reader = BufReader::new(&mut stream);
@@ -9,8 +11,8 @@ fn handle_connection(i: &usize, mut stream: TcpStream) {
         .take_while(|line| !line.is_empty())
         .collect();
 
-    println!("===> [Request no.{}]", i + 1);
-    println!("{:#?}", http_request)
+    println!("[{}] => [{}]", i + 1, http_request[0]);
+    stream.write_all(RESPONSE_OK).unwrap();
 }
 
 fn main() {
