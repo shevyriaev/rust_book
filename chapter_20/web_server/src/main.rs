@@ -2,7 +2,7 @@ use std::{fs, process, thread};
 use std::io::{BufRead, BufReader, Write};
 use std::net::{TcpListener, TcpStream};
 use std::time::Duration;
-use web_server::{REQUEST, STATUS, WEBFILES};
+use web_server::{ThreadPool, REQUEST, STATUS, WEBFILES};
 
 fn handle_connection(i: &usize, mut stream: TcpStream) {
     let buf_reader = BufReader::new(&mut stream);
@@ -45,8 +45,11 @@ fn handle_connection(i: &usize, mut stream: TcpStream) {
 
 fn main() {
     let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
+    let pool = ThreadPool::new(4);
 
-    for (i, stream) in listener.incoming().enumerate() {
-        thread::spawn(move || handle_connection(&i, stream.unwrap()));
+    for (i, stream) in listener.incoming().take(2).enumerate() {
+        pool.execute(move || handle_connection(&i, stream.unwrap()));
     }
+
+    println!("Shutting down.");
 }
